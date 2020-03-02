@@ -1,5 +1,6 @@
 package com.aeomhs.codekata.kakaotest;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -50,7 +51,7 @@ class Trie {
 
     Trie() {
         this.root = new Node(null, null, '\n');
-        this.leafs = new LinkedList<>();
+        this.leafs = new ArrayList<>();
     }
 
     static class Node {
@@ -67,7 +68,7 @@ class Trie {
             this.parent = parent;
             this.word = word;
             this.value = value;
-            this.childs = new LinkedList<>();
+            this.childs = new ArrayList<>();
         }
 
         boolean isLeaf() {
