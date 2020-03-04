@@ -3,93 +3,18 @@ package com.aeomhs.codekata.kakaotest;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.*;
 
-// TODO Not Solved
-public class CandidateKeys {
-
-    private LinkedList<String> keys;
-
-    // 유일성 검사
-    private HashSet<String> candidateKeys;
-
-    // 최소성 검사
-    private LinkedList<int[]> usedAttr;
-
-    private int[] used;
-
-    private boolean[] usedCandidateKey;
+class KeyResolverTest {
 
     public int solution(String[][] relation) {
-        int count = 0;
-        candidateKeys = new HashSet<>();
-
-        int row = relation.length;
-        int col = relation[0].length;
-
-        usedCandidateKey = new boolean[col];
-
-        // 조합 선택 개수
-        for (int i = 1; i <= col; i++){
-            // 조합 결과 저장 배열
-            String[][] keyCombArr = new String[row][];
-
-            // 각 row에 대해 i개 조합 키 구하기
-            for (int r = 0; r < row; r++) {
-                keys = new LinkedList<>();
-                usedAttr = new LinkedList<>();
-                used = new int[i];
-
-                keyBuild(relation[r], 0, i, 0, new StringBuilder());
-
-
-                if (keys.size() == 0)
-                    break;
-                System.out.println("{size : "+keys.size()+"}" + keys);
-
-                keyCombArr[r] = new String[keys.size()];
-                for (int cn = 0; cn < keys.size(); cn++)
-                    keyCombArr[r][cn] = keys.get(cn);
-            }
-
-            if (keys.size() == 0)
-                continue;
-
-            for (int[] selectedSetIndex : usedAttr)
-                System.out.print(Arrays.toString(selectedSetIndex) + ", ");
-            System.out.println();
-
-            // 유일성 체크
-            for (int cn = 0; cn < keyCombArr[0].length; cn++) {
-                HashSet<String> set = new HashSet<>();
-                for (int r = 0; r < row; r++) {
-                    // 유일성 불만족
-                    if (set.contains(keyCombArr[r][cn]))
-                        break;
-                    set.add(keyCombArr[r][cn]);
-                }
-
-                // 유일성 만족
-                if (set.size() == row) {
-                    System.out.println(set);
-                    candidateKeys.addAll(set);
-                    count++;
-                    // 최소성
-                    for (int selected : usedAttr.get(cn))
-                        usedCandidateKey[selected] = true;
-                }
-            }
-        }
-
-        System.out.println(candidateKeys);
-        return count;
+        KeyResolver keyResolver = new KeyResolver(relation);
+        return keyResolver.getCandidateKeys().size();
     }
 
     @Test
     public void solutionTest() {
-        CandidateKeys solution = new CandidateKeys();
+        KeyResolverTest solution = new KeyResolverTest();
         System.out.println("=====Test Case =====");
         Assertions.assertEquals(2, solution.solution(
                 new String[][] {
@@ -168,37 +93,257 @@ public class CandidateKeys {
                 }
         ));
     }
+}
+
+class KeyResolver {
+
+    // (field == Attr)
+    private Attr[] fields;
+
+    private List<Key> keys;
+
+    private List<SuperKey> superKeys;
+
+    private List<CandidateKey> candidateKeys;
+
+    KeyResolver(String[][] relation) {
+        fields = new Attr[relation[0].length];
+
+        for (int j = 0; j < relation[0].length ; j++) {
+            String[] column = new String[relation.length];
+            for (int i = 0; i < relation.length; i++) {
+                column[i] = relation[i][j];
+            }
+            fields[j] = new Attr(column);
+        }
+
+        generateKeys();
+        System.out.println("keys");
+        System.out.println(keys);
+        generateSuperKeys();
+        System.out.println("superKeys");
+        System.out.println(superKeys);
+        generateCandidateKeys();
+        System.out.println("candidateKeys");
+        System.out.println(candidateKeys);
+    }
 
     /**
-     * Attribute r개를 뽑아 조합하여 키를 생성한다.
+     * building All of case can be key
      */
-    public void keyBuild(String[] row, int index, int r, int k, StringBuilder builder) {
-        // 키 생성 완료
-        if (k == r) {
-            keys.add(builder.toString());
-            usedAttr.add(used.clone());
+    private void generateKeys() {
+        if (fields == null || fields.length == 0)
+            return;
+
+        keys = new LinkedList<>();
+        List<Attr> temp = new LinkedList<>();
+        for (int i = 1; i <= fields.length; i++) {
+            comb(keys, temp, fields, 0, i, 0);
+        }
+    }
+
+    /**
+     * n개 중 r개를 뽑는다.
+     */
+    private void comb(List<Key> keys, List<Attr> temp, Attr[] fields, int index, int n, int r) {
+        // Done
+        if (n == r) {
+            List<Attr> newAttrList = new LinkedList<>(temp);
+            keys.add(new Key(newAttrList));
             return;
         }
 
-        // index 조건 불변식 : index < row.length
-        if (index >= row.length)
+        // Failed
+        if (index > fields.length - 1)
             return;
 
-        // row[index] 선택 안함
-        keyBuild(row, index+1, r, k, builder);
+        comb(keys, temp, fields, index+1, n, r);
+        temp.add(fields[index]);
+        comb(keys, temp, fields, index+1, n, r+1);
+        temp.remove(fields[index]);
+    }
 
-        // row[index] 등록된 후보키인지 확인
-        if (usedCandidateKey[index])
+    /**
+     * 존재하는 모든 Key에 대해 super key 리스트를 생성한다.
+     */
+    private void generateSuperKeys() {
+        if (keys == null)
             return;
 
-        // row[index] 선택
-        used[k] = index;
-        builder.append(row[index]);
-        keyBuild(row, index+1, r, k+1, builder);
+        superKeys = new LinkedList<>();
 
-        // 선택 취소
-        int start = builder.lastIndexOf(row[index]);
-        int end = start + row[index].length();
-        builder.delete(start, end);
+        for (Key key : keys) {
+            if (isSuperKey(key))
+                superKeys.add(new SuperKey(key.attrs));
+        }
+    }
+
+    private boolean isSuperKey(Key key) {
+        HashSet<String> records = new HashSet<>();
+        for (String record : key.records) {
+            if (records.contains(record)) {
+                return false;
+            }
+            records.add(record);
+        }
+
+        return true;
+    }
+
+    /**
+     * 존재하는 모든 super key에 대해 candidate key 리스트를 생성한다.
+     */
+    private void generateCandidateKeys() {
+        if (superKeys == null)
+            return;
+
+        candidateKeys = new LinkedList<>();
+
+        for (SuperKey superKey : superKeys) {
+            if (isCandidateKey(superKey))
+                candidateKeys.add(new CandidateKey(superKey.attrs));
+        }
+    }
+
+
+    private boolean isCandidateKey(SuperKey superKey) {
+        List<Attr> temp = new LinkedList<>();
+
+        Attr[] fields = new Attr[superKey.attrs.size()];
+        for (int i = 0; i < fields.length; i++)
+            fields[i] = superKey.attrs.get(i).clone();
+
+        for (int i = 1; i < fields.length; i++) {
+            List<Key> subKeys = new LinkedList<>();
+            comb(subKeys, temp, fields, 0, i, 0);
+            for (Key subKey : subKeys) {
+                for (SuperKey existKey : superKeys){
+                    if (existKey.equals(subKey)) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    public Attr[] getFields() {
+        return fields;
+    }
+
+    public List<Key> getKeys() {
+        return keys;
+    }
+
+    public List<SuperKey> getSuperKeys() {
+        return superKeys;
+    }
+
+    public List<CandidateKey> getCandidateKeys() {
+        return candidateKeys;
+    }
+
+    /**
+     * Column
+     */
+    static class Attr {
+
+        static int attr_count = 0b1;
+
+        final int id;
+
+        final String[] records;
+
+        Attr(String[] records) {
+            this.id = attr_count;
+            attr_count = attr_count << 1;
+            this.records = records;
+        }
+
+        private Attr(int id, String[] records) {
+            this.id = id;
+            this.records = records;
+        }
+
+        public boolean equals(Attr other) {
+            return this.id == other.id;
+        }
+
+        public String toString() {
+            return "["+ id +"]" + Arrays.toString(records);
+        }
+
+        public Attr clone() {
+            return new Attr(this.id, this.records);
+        }
+    }
+
+    /**
+     * Mapped Attrs
+     * (= Columns)
+     */
+    static class Key {
+
+        final int attrBitMask;
+
+        final List<Attr> attrs;
+
+        final String[] records;
+
+        Key(List<Attr> attrs) {
+            this.attrs = attrs;
+
+            if (attrs.size() == 0) {
+                throw new IllegalArgumentException("Cannot Generate Key : attr list's size = 0");
+            }
+            else if (attrs.size() == 1){
+                this.records = attrs.get(0).records;
+                this.attrBitMask = attrs.get(0).id;
+            }
+            else {
+                StringBuilder[] temps = new StringBuilder[attrs.get(0).records.length];
+                int bitMask = 0b0;
+                for (Attr attr : attrs) {
+                    for (int i = 0; i < attr.records.length; i++) {
+                        if (temps[i] == null)
+                            temps[i] = new StringBuilder();
+                        temps[i].append(attr.records[i]);
+                    }
+                    bitMask |= attr.id;
+                }
+
+                this.records = new String[temps.length];
+                for (int i = 0; i < temps.length; i++) {
+                    this.records[i] = temps[i].toString();
+                }
+                this.attrBitMask = bitMask;
+            }
+        }
+
+        /**
+         * 같은 attr의 조합이면 같은 key이다.
+         */
+        public boolean equals(Key other) {
+            return (this.attrBitMask ^ other.attrBitMask) == 0;
+        }
+
+        public String toString() {
+            return "[" + Integer.toBinaryString(attrBitMask) + "]" + Arrays.toString(records);
+        }
+    }
+
+    static class SuperKey extends Key {
+
+        SuperKey(List<Attr> attrs) {
+            super(attrs);
+        }
+    }
+
+    static class CandidateKey extends SuperKey {
+
+        CandidateKey(List<Attr> attrs) {
+            super(attrs);
+        }
     }
 }
