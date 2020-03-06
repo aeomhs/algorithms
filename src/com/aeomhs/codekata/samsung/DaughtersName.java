@@ -4,20 +4,37 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 class DaughtersNameTest {
 
+//    public static void main(String[] args) throws FileNotFoundException {
+//        System.setIn(new FileInputStream("/Users/aeomhs/IdeaProjects/SendBox/src/com/aeomhs/codekata/samsung/input.txt"));
+//        // Scanner
+//        Scanner scanner = new Scanner(System.in);
+//        int T = scanner.nextInt();
+//        for (int t = 1; t <= T; t++) {
+//            int N, M;
+//            char[][] board;
+//
+//            N = scanner.nextInt();
+//            M = scanner.nextInt();
+//            board = new char[N][M];
+//            for(int i=0;i<N;i++) {
+//                String s = scanner.next();
+//                for(int j=0;j<M;j++) {
+//                    board[i][j]=s.charAt(j);
+//                }
+//            }
+//
+//            DaughtersName daughtersName = new DaughtersName();
+//            System.out.println("#" + t + " " + daughtersName.buildName(board));
+//        }
+//    }
+
     public static void main(String[] args) throws Exception {
         System.setIn(new FileInputStream("/Users/aeomhs/IdeaProjects/SendBox/src/com/aeomhs/codekata/samsung/input.txt"));
-
-        BufferedReader br = null;
-
-        try {
-            br = new BufferedReader(new InputStreamReader(System.in));
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(System.in))) {
             int T;
 
             String line = br.readLine();
@@ -25,7 +42,7 @@ class DaughtersNameTest {
 
             DaughtersName daughtersName = new DaughtersName();
 
-            for(int t = 1; t <= T; t++) {
+            for (int t = 1; t <= T; t++) {
                 int N, M;
                 char[][] board;
 
@@ -53,16 +70,14 @@ class DaughtersNameTest {
                     board[i] = row;
                 }
 
-                if (N == 1 && M == 1){
-                    System.out.println("#"+t+" "+ board[0][0]);
+                if (N == 1 && M == 1) {
+                    System.out.println("#" + t + " " + board[0][0]);
                     continue;
                 }
-                System.out.println("#"+t+" "+ daughtersName.buildName(board));
+                System.out.println("#" + t + " " + daughtersName.buildName(board));
             }
         } catch (IOException ioe) {
             ioe.printStackTrace();
-        } finally {
-            br.close();
         }
     }
 
@@ -113,87 +128,110 @@ public class DaughtersName {
 
     private int M;
 
-    private List<String> candidateNameList;
+    private String[][] mem;
 
     public String buildName(char[][] board) {
         this.board = board;
         this.N = board.length;
         this.M = board[0].length;
-
-        this.candidateNameList = new ArrayList<>();
-
-        buildName(0, 0, N+M-2, new StringBuilder(), 0);
-
-//        System.out.println(candidateNameList);
-        return Collections.min(candidateNameList);
+        buildNames();
+        return mem[N-1][M-1];
     }
 
-//    private void buildName(int row, int col, int depth, StringBuilder builder, int index) {
-//        // append
-//        builder.append(board[row][col]);
-//
-////        System.out.println("["+row + "," + col + "]"+"("+depth+")"+builder.toString());
-//
-//        // build new Name
-//        if (depth == 0 && row == N-1 && col == M-1) {
-//            candidateNameList.add(builder.toString());
-//            builder.delete(index-1, index);
-//            return;
-//        }
-//
-//        // Fail to Build
-//        if (depth == 0){
-//            builder.delete(index-1, index);
-//            return;
-//        }
-//
-//        if (col < M-1){
-//            // go to Right
-//            buildName(row, col+1, depth-1, builder, index+1);
-//        }
-//
-//        if (row < N-1){
-//            // go to Down
-//            buildName(row+1, col, depth-1, builder, index+1);
-//        }
-//
-//        builder.delete(index, index+1);
-//    }
-    private void buildName(int row, int col, int depth, StringBuilder builder, int index) {
-        builder.append(board[row][col]);
+    private void buildNames() {
+        mem = new String[N][M];
+        mem[0][0] = String.valueOf(board[0][0]);
 
-        // build new Name
-        if (depth == 0 && row == N-1 && col == M-1) {
-            candidateNameList.add(builder.toString());
-            builder.delete(index-1, index);
-            return;
+        for (int i = 1; i < N; i++) {
+            mem[i][0] = mem[i-1][0] + board[i][0];
+        }
+        for (int i = 1; i < M; i++) {
+            mem[0][i] = mem[0][i-1] + board[0][i];
         }
 
-        // Fail to Build
-        if (depth == 0){
-            builder.delete(index-1, index);
-            return;
+        for (int i = 1; i < N; i++) {
+            for (int j = 1; j < M; j++) {
+                String left = mem[i][j-1];
+                String up = mem[i-1][j];
+
+                if (left.compareTo(up) < 0){
+                    mem[i][j] = left+board[i][j];
+                } else {
+                    mem[i][j] = up+board[i][j];
+                }
+            }
+        }
+    }
+
+    public String spread() {
+        LinkedList<Point> queue = new LinkedList<>();
+        PriorityQueue<String> nameList = new PriorityQueue<>();
+        Point o = new Point(0, 0);
+        o.subName = new StringBuilder();
+        queue.addLast(o);
+
+        while (!queue.isEmpty()) {
+            // Selected char
+            Point pos = queue.removeFirst();
+            pos.subName.append(board[pos.row][pos.col]);
+
+            // Escape
+            if (pos.row == N-1 && pos.col == M-1) {
+                nameList.add(pos.subName.toString());
+                continue;
+            }
+
+            // Spread Right Or Down
+            Point right = pos.right();
+            right.subName = new StringBuilder(pos.subName.toString());
+            Point down = pos.down();
+            down.subName = new StringBuilder(pos.subName.toString());
+
+            boolean endOfCol = right.col == M;
+            boolean endOfRow = down.row == N;
+
+            if (endOfCol && !endOfRow)
+                queue.addLast(down);
+
+            if (!endOfCol && endOfRow)
+                queue.addLast(right);
+
+            if (!endOfCol && !endOfRow){
+                if (board[right.row][right.col] < board[down.row][down.col]) {
+                    queue.addLast(right);
+                }
+                else if (board[right.row][right.col] > board[down.row][down.col]) {
+                    queue.addLast(down);
+                } else {
+                    queue.addLast(right);
+                    queue.addLast(down);
+                }
+            }
         }
 
-        // 아래로만 진행
-        if (col == M-1 && row < N-1){
-            buildName(row+1, col, depth-1, builder, index+1);
-        }
-        // 오른쪽으로만 진행
-        else if (row == N-1 && col < M-1){
-            buildName(row, col+1, depth-1, builder, index+1);
-        }
-        // 오른쪽 아래 중 character 작은 값 선택
-        else if ((board[row + 1][col] < board[row][col + 1])) {
-            buildName(row+1, col, depth-1, builder, index+1);
-        } else if  ((board[row + 1][col] > board[row][col + 1])){
-            buildName(row, col+1, depth-1, builder, index+1);
-        } else {
-            buildName(row+1, col, depth-1, builder, index+1);
-            buildName(row, col+1, depth-1, builder, index+1);
+        return nameList.poll();
+    }
+
+    static class Point {
+        int row, col;
+        StringBuilder subName;
+
+        Point(int row, int col) {
+            this.row = row;
+            this.col = col;
         }
 
-        builder.delete(index, index+1);
+        Point right() {
+            return new Point(this.row, this.col+1);
+        }
+
+        Point down() {
+            return new Point(this.row+1, this.col);
+        }
+
+        public String toString() {
+            return "("+row+","+col+")";
+        }
     }
 }
 
