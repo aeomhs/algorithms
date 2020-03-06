@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
+import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -18,7 +19,7 @@ class DroneMinRouteTest {
      */
     public int solution(int[][] board) {
         DroneMinRoute droneMinRoute = new DroneMinRoute(board);
-        return droneMinRoute.getMinMovementForRoute();
+        return droneMinRoute.getMinMovementForBfsRoute();
     }
 
     @Test
@@ -28,23 +29,23 @@ class DroneMinRouteTest {
         int expected;
         int result;
 
-//        board = new int[][] {
-//                {0, 0, 0, 1, 1},{0, 0, 0, 1, 0},{0, 1, 0, 1, 1},{1, 1, 0, 0, 1},{0, 0, 0, 0, 0}
-//        };
-//        expected = 7;
-//        result = test.solution(board);
-//        Assertions.assertEquals(expected, result);
-//
-//        board = new int[][] {
-//                {0, 0, 0, 0, 0},
-//                {0, 0, 0, 0, 0},
-//                {0, 0, 0, 0, 0},
-//                {0, 0, 0, 0, 0},
-//                {0, 0, 0, 0, 0}
-//        };
-//        expected = 7;
-//        result = test.solution(board);
-//        Assertions.assertEquals(expected, result);
+        board = new int[][] {
+                {0, 0, 0, 1, 1},{0, 0, 0, 1, 0},{0, 1, 0, 1, 1},{1, 1, 0, 0, 1},{0, 0, 0, 0, 0}
+        };
+        expected = 7;
+        result = test.solution(board);
+        Assertions.assertEquals(expected, result);
+
+        board = new int[][] {
+                {0, 0, 0, 0, 0},
+                {0, 0, 0, 0, 0},
+                {0, 0, 0, 0, 0},
+                {0, 0, 0, 0, 0},
+                {0, 0, 0, 0, 0}
+        };
+        expected = 7;
+        result = test.solution(board);
+        Assertions.assertEquals(expected, result);
 
 
         board = new int[][] {
@@ -57,14 +58,44 @@ class DroneMinRouteTest {
         expected = 9;
         result = test.solution(board);
         Assertions.assertEquals(expected, result);
-    }
-}
 
+
+        board = new int[][] {
+                {0, 0, 1, 0, 0, 0},
+                {0, 0, 0, 0, 0, 0},
+                {1, 1, 1, 1, 0, 0},
+                {1, 0, 0, 0, 0, 0},
+                {0, 0, 0, 1, 1, 1},
+                {0, 0, 0, 0, 0, 0}
+        };
+        expected = 15;
+        result = test.solution(board);
+        Assertions.assertEquals(expected, result);
+
+
+//        board = new int[][] {
+//                {0, 0, 0, 0, 0, 0, 0, 0},
+//                {1, 0, 0, 0, 0, 0, 0, 0},
+//                {1, 0, 1, 1, 0, 0, 1, 1},
+//                {1, 1, 1, 0, 0, 0, 1, 0},
+//                {0, 0, 0, 0, 0, 1, 1, 0},
+//                {1, 0, 0, 1, 1, 1, 0, 0},
+//                {1, 0, 0, 1, 0, 0, 0, 0},
+//                {1, 0, 0, 0, 0, 0, 0, 0},
+//        };
+//        expected = 19;
+//        result = test.solution(board);
+//        Assertions.assertEquals(expected, result);
+    }
+
+}
 class DroneMinRoute {
 
     private final int[][] board;
 
     private final int N;
+
+    private int minTS;
 
     DroneMinRoute(int [][] board) {
         this.board = board;
@@ -81,9 +112,12 @@ class DroneMinRoute {
          */
         boolean status = true;
 
+        int ts;
+
         Drone() {
             p1 = new Point(0, 0 );
             p2 = new Point(1, 0 );
+            ts = 0;
         }
 
         static class Point {
@@ -91,6 +125,10 @@ class DroneMinRoute {
             Point(int x, int y) {
                 this.x = x;
                 this.y = y;
+            }
+
+            Point copy() {
+                return new Point(x, y);
             }
         }
 
@@ -119,10 +157,8 @@ class DroneMinRoute {
          * 00   ->  0X
          */
         void downRotateRight() {
-            status = false;
-            p1.x++;
-            p1.y++;
-            this.refreshPoint();
+            downRotateLeft();
+            moveRight();
         }
 
         /**
@@ -133,7 +169,6 @@ class DroneMinRoute {
             status = false;
             p2.x--;
             p2.y++;
-            this.refreshPoint();
         }
 
         /**
@@ -144,7 +179,6 @@ class DroneMinRoute {
             status = false;
             p1.x++;
             p1.y--;
-            this.refreshPoint();
         }
 
         /**
@@ -152,10 +186,8 @@ class DroneMinRoute {
          * XX -> X0
          */
         void upRotateLeft() {
-            status = false;
-            p2.x--;
-            p2.y--;
-            this.refreshPoint();
+            upRotateRight();
+            moveLeft();
         }
 
         /**
@@ -163,10 +195,8 @@ class DroneMinRoute {
          * X0   -> XX
          */
         void rightRotateDown() {
-            status = true;
-            p1.x++;
-            p1.y++;
-            this.refreshPoint();
+            rightRotateUp();
+            moveDown();
         }
 
         /**
@@ -177,7 +207,6 @@ class DroneMinRoute {
             status = true;
             p2.x++;
             p2.y--;
-            this.refreshPoint();
         }
 
         /**
@@ -188,7 +217,6 @@ class DroneMinRoute {
             status = true;
             p1.x--;
             p1.y++;
-            this.refreshPoint();
         }
 
         /**
@@ -196,77 +224,69 @@ class DroneMinRoute {
          * 0X  -> 00
          */
         void leftRotateUp() {
-            status = true;
-            p2.x--;
-            p2.y--;
-            this.refreshPoint();
+            leftRotateDown();
+            moveUp();
         }
 
-        /**
-         * XX -> 왼쪽 X가 P1
-         * Y  -> 위 Y가 P1
-         * Y
-         */
-        void refreshPoint() {
-            if (status) {
-                if (p1.x > p2.x)
-                    swapPoint();
-            }
-            else {
-                if (p1.y > p2.y)
-                    swapPoint();
-            }
+        Drone copy() {
+            Drone newDrone = new Drone();
+            newDrone.status = this.status;
+            newDrone.p1 = this.p1.copy();
+            newDrone.p2 = this.p2.copy();
+            newDrone.ts = this.ts;
+            return newDrone;
         }
 
-        void swapPoint() {
-            int tempX = p1.x;
-            int tempY = p1.y;
-            p1.x = p2.x;
-            p1.y = p2.y;
-            p2.x = tempX;
-            p2.y = tempY;
+        public String toString() {
+            return "[("+p1.x+","+p1.y+"),("+p2.x+","+p2.y+")]";
         }
     }
 
     public int getMinMovementForRoute() {
+        minTS = Integer.MAX_VALUE;
+
         Drone drone = new Drone();
         afterMovement(drone);
 
-        LinkedList<Integer> tsList = new LinkedList<>();
+        route(drone, 0);
 
-        route(tsList, drone, 0);
-
-        return Collections.min(tsList);
+        return minTS;
     }
 
-    private void route(List<Integer> tsList, Drone drone, int m) {
+    private void route(Drone drone, int m) {
+
 //        System.out.println(m+"번째 이동");
 //        printBoardWithDrone(drone);
 
         if (isGoalPoint(drone)){
-            tsList.add(m);
+            if (m < minTS)
+                minTS = m;
             return;
         }
 
+        if (m == minTS-1)
+            return;
+
         // go to right
         if (goRight(drone)) {
-            route(tsList, drone, m+1);
+            route(drone, m+1);
             cancelMovedRight(drone);
         }
 
         // go to down
         if (goDown(drone)) {
-            route(tsList, drone, m+1);
+            route(drone, m+1);
             cancelMovedDown(drone);
         }
 
+        // 오른쪽, 아래쪽 모두 막힐 경우 우회 시도
         if (goLeft(drone)) {
-            route(tsList, drone, m+1);
+            route(drone, m+1);
             cancelMovedLeft(drone);
         }
 
         if (goUp(drone)) {
-            route(tsList, drone, m+1);
+            route(drone, m+1);
             cancelMovedUp(drone);
         }
 
@@ -275,21 +295,21 @@ class DroneMinRoute {
             // Rotate Left or Right
             if (canDownRotateRightOrLeft(drone)) {
                 downRotateRight(drone);
-                route(tsList, drone, m+1);
+                route(drone, m+1);
                 cancelDownRotatedRight(drone);
 
                 downRotateLeft(drone);
-                route(tsList, drone, m+1);
+                route(drone, m+1);
                 cancelDownRotatedLeft(drone);
             }
 
             if (canUpRotateRightOrLeft(drone)) {
                 upRotateRight(drone);
-                route(tsList, drone, m+1);
+                route(drone, m+1);
                 cancelUpRotatedRight(drone);
 
                 upRotateLeft(drone);
-                route(tsList, drone, m+1);
+                route(drone, m+1);
                 cancelUpRotatedLeft(drone);
             }
         }
@@ -297,24 +317,123 @@ class DroneMinRoute {
             // Rotate Down or Up
             if (canRightRotateDownOrUp(drone)) {
                 rightRotateDown(drone);
-                route(tsList, drone, m+1);
+                route(drone, m+1);
                 cancelRightRotatedDown(drone);
 
                 rightRotateUp(drone);
-                route(tsList, drone, m+1);
+                route(drone, m+1);
                 cancelRightRotatedUp(drone);
             }
 
             if (canLeftRotateDownOrUp(drone)) {
                 leftRotateDown(drone);
-                route(tsList, drone, m+1);
+                route(drone, m+1);
                 cancelLeftRotatedDown(drone);
 
                 leftRotateUp(drone);
-                route(tsList, drone, m+1);
+                route(drone, m+1);
                 cancelLeftRotatedUp(drone);
             }
         }
+    }
+
+    public int getMinMovementForBfsRoute() {
+        return bfsRoute(new LinkedList<>());
+    }
+
+    /**
+     * @param queue Drone 가능한 위치 정보.
+     */
+    private int bfsRoute(Deque<Drone> queue) {
+
+        queue.addLast(new Drone());
+
+        while (!queue.isEmpty()) {
+            Drone drone = queue.removeFirst();
+            drone.ts++;
+//            System.out.println(drone.ts + "" + drone);
+//            printBoardWithDrone(drone);
+
+            if (canGoRight(drone)) {
+                Drone nextPosDrone = drone.copy();
+                nextPosDrone.moveRight();
+                if (isGoalPoint(nextPosDrone))
+                    return drone.ts;
+                queue.addLast(nextPosDrone);
+            }
+
+            if (canGoDown(drone)) {
+                Drone nextPosDrone = drone.copy();
+                nextPosDrone.moveDown();
+                if (isGoalPoint(nextPosDrone))
+                    return drone.ts;
+                queue.addLast(nextPosDrone);
+            }
+
+            if (canGoLeft(drone)) {
+                Drone nextPosDrone = drone.copy();
+                nextPosDrone.moveLeft();
+                if (isGoalPoint(nextPosDrone))
+                    return drone.ts;
+                queue.addLast(nextPosDrone);
+            }
+
+            if (canGoUp(drone)) {
+                Drone nextPosDrone = drone.copy();
+                nextPosDrone.moveUp();
+                if (isGoalPoint(nextPosDrone))
+                    return drone.ts;
+                queue.addLast(nextPosDrone);
+            }
+
+            // Rotate
+            if (drone.status) {
+                // Rotate Left or Right
+                if (canDownRotateRightOrLeft(drone)) {
+                    Drone nextPosDrone = drone.copy();
+                    downRotateRight(nextPosDrone);
+                    queue.addLast(nextPosDrone);
+
+                    nextPosDrone = drone.copy();
+                    downRotateLeft(nextPosDrone);
+                    queue.addLast(nextPosDrone);
+                }
+
+                if (canUpRotateRightOrLeft(drone)) {
+                    Drone nextPosDrone = drone.copy();
+                    upRotateRight(nextPosDrone);
+                    queue.addLast(nextPosDrone);
+
+                    nextPosDrone = drone.copy();
+                    upRotateLeft(nextPosDrone);
+                    queue.addLast(nextPosDrone);
+                }
+            }
+            else {
+                // Rotate Down or Up
+                if (canRightRotateDownOrUp(drone)) {
+                    Drone nextPosDrone = drone.copy();
+                    rightRotateDown(nextPosDrone);
+                    queue.addLast(nextPosDrone);
+
+                    nextPosDrone = drone.copy();
+                    rightRotateUp(nextPosDrone);
+                    queue.addLast(nextPosDrone);
+                }
+
+                if (canLeftRotateDownOrUp(drone)) {
+                    Drone nextPosDrone = drone.copy();
+                    leftRotateDown(nextPosDrone);
+                    queue.addLast(nextPosDrone);
+
+                    nextPosDrone = drone.copy();
+                    leftRotateUp(nextPosDrone);
+                    queue.addLast(nextPosDrone);
+                }
+            }
+        }
+
+        return -1;
     }
 
     private boolean isGoalPoint(Drone drone) {
@@ -345,20 +464,12 @@ class DroneMinRoute {
     private boolean canGoDown(Drone drone) {
         if (drone.status) {
             if (drone.p1.y < N-1 && drone.p2.y < N-1) {
-                // 벽이 아니고
-                boolean noWall = board[drone.p1.y + 1][drone.p1.x] != 1 && board[drone.p2.y + 1][drone.p2.x] !=1;
-                // 지나온 길이 아니어야한다.
-                boolean oldWay = board[drone.p1.y + 1][drone.p1.x] < 0 && board[drone.p2.y + 1][drone.p2.x] < 0;
-
-                return noWall && !oldWay;
+                return (board[drone.p1.y + 1][drone.p1.x] == 0 && board[drone.p2.y + 1][drone.p2.x] == 0);
             }
         }
         else {
             if (drone.p2.y < N-1) {
-                boolean noWall = board[drone.p2.y + 1][drone.p2.x] != 1;
-                boolean oldWay = board[drone.p2.y + 1][drone.p2.x] < 0;
-
-                return noWall && !oldWay;
+                return board[drone.p2.y + 1][drone.p2.x] == 0;
             }
         }
         return false;
@@ -376,20 +487,12 @@ class DroneMinRoute {
     private boolean canGoUp(Drone drone) {
         if (drone.status) {
             if (drone.p1.y > 0 && drone.p2.y > 0) {
-                // 벽이 아니고
-                boolean noWall = board[drone.p1.y - 1][drone.p1.x] != 1 && board[drone.p2.y - 1][drone.p2.x] !=1;
-                // 지나온 길이 아니어야한다.
-                boolean oldWay = board[drone.p1.y - 1][drone.p1.x] < 0 && board[drone.p2.y - 1][drone.p2.x] < 0;
-
-                return noWall && !oldWay;
+                return (board[drone.p1.y - 1][drone.p1.x] == 0 && board[drone.p2.y - 1][drone.p2.x] == 0);
             }
         }
         else {
             if (drone.p1.y > 0) {
-                boolean noWall = board[drone.p2.y - 1][drone.p2.x] != 1;
-                boolean oldWay = board[drone.p2.y - 1][drone.p2.x] < 0;
-
-                return noWall && !oldWay;
+                return board[drone.p1.y - 1][drone.p1.x] == 0;
             }
         }
         return false;
@@ -407,18 +510,12 @@ class DroneMinRoute {
     private boolean canGoRight(Drone drone) {
         if (drone.status) {
             if (drone.p2.x < N-1) {
-                boolean noWall = board[drone.p2.y][drone.p2.x + 1] != 1;
-                boolean oldWay = board[drone.p2.y][drone.p2.x + 1] < 0;
-
-                return noWall && !oldWay;
+                return (board[drone.p2.y][drone.p2.x + 1] == 0);
             }
         }
         else {
             if (drone.p1.x < N - 1 && drone.p2.x < N - 1) {
-                boolean noWall =  board[drone.p1.y][drone.p1.x + 1] != 1 && board[drone.p2.y][drone.p2.x + 1] != 1;
-                boolean oldWay =  board[drone.p1.y][drone.p1.x + 1] < 0 && board[drone.p2.y][drone.p2.x + 1] < 0;
-
-                return noWall && !oldWay;
+                return (board[drone.p1.y][drone.p1.x + 1] == 0 && board[drone.p2.y][drone.p2.x + 1] == 0);
             }
         }
         return false;
@@ -436,18 +533,12 @@ class DroneMinRoute {
     private boolean canGoLeft(Drone drone) {
         if (drone.status) {
             if (drone.p1.x > 0) {
-                boolean noWall = board[drone.p2.y][drone.p2.x - 1] != 1;
-                boolean oldWay = board[drone.p2.y][drone.p2.x - 1] < 0;
-
-                return noWall && !oldWay;
+                return (board[drone.p1.y][drone.p1.x - 1] == 0);
             }
         }
         else {
             if (drone.p1.x > 0 && drone.p2.x > 0) {
-                boolean noWall =  board[drone.p1.y][drone.p1.x - 1] != 1 && board[drone.p2.y][drone.p2.x - 1] != 1;
-                boolean oldWay =  board[drone.p1.y][drone.p1.x - 1] < 0 && board[drone.p2.y][drone.p2.x - 1] < 0;
-
-                return noWall && !oldWay;
+                return (board[drone.p1.y][drone.p1.x - 1] == 0 && board[drone.p2.y][drone.p2.x - 1] == 0);
             }
         }
         return false;
