@@ -1,8 +1,15 @@
 package com.aeomhs.codekata.programmers;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
+/**
+ * 1. 유니온 파인드를 이용한 cycle check
+ *  - 새롭게 추가하는 Edge(v,w)의 w가 이미 같은 tree에 속한다면 cycle 발생!
+ * -> 역이용, 노드를 하나씩 제거하면서 cycle 검사를 하는 것보다,
+ * -> 1~n 노드 중 i 노드를 제외하고 edge를 추가하면서 cycle이 발생하면 return
+ * -> 끝까지 cycle이 생기지 않는다면 count
+ * !!!!!@#!@#@!#!@#!!
+ */
 public class DeleteCycle {
     public static void main(String[] args) {
         DeleteCycle test = new DeleteCycle();
@@ -30,166 +37,144 @@ public class DeleteCycle {
                 {5,4},
         });
         System.out.println(result);
+
+        result = test.solution(8, new int[][] {
+                {1,2},
+                {2,3},
+                {3,4},
+                {4,5},
+                {5,6},
+                {6,7},
+                {7,8},
+                {8,1},
+                {2,7},
+                {3,6}
+        });
+        System.out.println(result);
     }
 
     public int solution(int n, int[][] edges) {
         int answer = 0;
 
-        Graph graph = new Graph(n);
+        // 노드를 하나씩 제외한 상태에서 그래프를 연결한다.
+        // i : 5000
+        // 5000 개의 노드에 대한 모든 검사를 할 필요가 있을까?
+        // i * j = 5000 * 2500만...
+        for (int i = 0; i < n; i++) {
+            System.out.println("Draw Tree Without " + i);
+            UnionFind uf = new UnionFind(n);
+            boolean isCycle = false;
 
-        for (int[] set : edges)
-            graph.addEdge((set[0]-1), (set[1]-1));
+            // 제외하는 노드를 포함하지 않는 모든 엣지를 추가한다.
+            // j : 1 ~ 5000^2(25 000 000)
+            // 비순환 그래프에서 Edge 수는 V-1 이다.
+            // V-1 이상이면 순환이 생길 수밖에 없다.
+            // 어차피 그 전에 Connect 검사로 발견될테니 개수 비교는 무의미하다.
+            for (int[] edge : edges) {
+                int v = edge[0] - 1;
+                int w = edge[1] - 1;
 
-        // 모든 싸이클이 제거되기 위해서는 최초 싸이클 중 하나의 원소를 하나라도 제거해서 성공해야한다.
-        DfsForDeleteCycle cycleDfs = new DfsForDeleteCycle(graph);
+                System.out.println(v + ", " + w);
 
-        System.out.println(cycleDfs.getCycle());
+                if (v != i && w != i) {
+                    // 사이클 탐색
+                    // log n
+                    if (uf.isConnected(v, w)) {
+                        System.out.println("Detected Cycle!");
+                        isCycle = true;
+                        break;
+                    }
 
-        for (int i : cycleDfs.getCycle()) {
-            System.out.println(i);
-            Graph deleteNodeGraph = (Graph) graph.clone();
-            deleteNodeGraph.deleteNode(i);
-            DfsForDeleteCycle dfs = new DfsForDeleteCycle(deleteNodeGraph);
-            if (!dfs.isCycle())
-                answer += (i+1);
-
-            int[] edgeTo = dfs.getEdgeTo();
-            for (int w = 0; w < n; w++) {
-                int v = w;
-                System.out.print("To "+(v+1)+" : ");
-                while (v != edgeTo[v]){
-                    System.out.print((v+1) + ", ");
-                    v = edgeTo[v];
+                    // 엣지 추가
+                    uf.union(v, w);
                 }
-                System.out.println();
             }
+
+            if (!isCycle)
+                answer += (i+1);
         }
 
         return answer;
     }
 }
 
-class DfsForDeleteCycle {
+class UnionFind implements Cloneable {
 
-    private boolean[] marked;
+    private int N;
 
-    private boolean[] cycleCheck;
+    private int[] id;
 
-    private int[] edgeTo;
+    private int[] sz;
 
-    private HashMap<Integer, Integer> cycle;
+    UnionFind(int n) {
+        N = n;
+        id = new int[N];
+        sz = new int[N];
 
-    private boolean isCycle;
-
-    // s로부터 DFS
-    DfsForDeleteCycle(Graph graph) {
-        this.marked = new boolean[graph.getV()];
-        this.cycleCheck = new boolean[graph.getV()];
-        this.edgeTo = new int[graph.getV()];
-        cycle = new HashMap<>();
-        isCycle = false;
-
-        for (int i = 0; i < graph.getV(); i++) {
-            if (!marked[i])
-                dfs(graph, i);
+        for (int i = 0; i < N; i++){
+            id[i] = i;
+            sz[i] = 1;
         }
-
     }
 
-    private void dfs(Graph graph, int v) {
-        marked[v] = true;
-        cycleCheck[v] = true;
+    public boolean isConnected(int v, int w) {
+        return find(v) == find(w);
+    }
 
-        // v->w-> ..  -> v : cycle = marked,
-        for (int w : graph.getAdj(v)) {
-            if (!marked[w]){
-                edgeTo[w] = v;
-                dfs(graph, w);
-            }
-            else if (cycleCheck[w]) {
-                // v -> w -> v << 양방향 그래프이므로 순환X
-                if (edgeTo[v] != w) {
-                    isCycle = true;
+    public int find(int v) {
+        int vi = id[v];
+        while (vi != id[vi])
+            vi = id[vi];
 
-                    // 사이클마다 지나가는 정점의 회수를 알고, 가장 많이 지나가는 정점을 제거해야한다.
-                    for (int x = v; x != w; x = edgeTo[x])
-                        cycle.put(x, cycle.getOrDefault(x, 0)+1);
-                    cycle.put(w, cycle.getOrDefault(w, 0)+1);
+        return vi;
+    }
+
+    // Quick Union
+    public void union(int v, int w) {
+        int iv = find(v);
+        int iw = find(w);
+
+        if (iv == iw)
+            return;
+
+        // Weight Quick Union
+        if (sz[iv] > sz[iw]) {
+            id[iw] = id[iv];
+            sz[iv] += sz[iw];
+        } else {
+            id[iv] = id[iw];
+            sz[iw] += sz[iv];
+        }
+    }
+
+    // v가 루트 노드일 경우, v를 부모로 하는 모든 노드의 id를 자기 자신으로 바꾼다.
+    // 아니면, v의 부모 노드로 향하게 한다.
+    public void delete(int v) {
+        int vi = find(v);
+
+        boolean isRoot = v == vi;
+
+        for (int i = 0; i < N; i++) {
+            if (id[i] == v) {
+                if (isRoot) {
+                    id[i] = i;
+                }
+                else {
+                    id[i] = vi;
                 }
             }
         }
 
-        cycleCheck[v] = false;
-    }
-
-    public int[] getEdgeTo() {
-        return edgeTo;
-    }
-
-    public boolean isCycle() {
-        return isCycle;
-    }
-
-    public Iterable<Integer> getCycle() {
-        // 가장 많이 등장한 사이클 정점
-
-        int maxCounted = cycle.entrySet().stream()
-                        .max(Map.Entry.comparingByValue()).get().getValue();
-
-        return cycle.entrySet().stream()
-                .filter(integerIntegerEntry -> integerIntegerEntry.getValue() >= maxCounted)
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toList());
-    }
-}
-
-class Graph implements Cloneable {
-
-    private int V;
-
-    private int E;
-
-    private Deque<Integer>[] adj;
-
-    Graph(int V) {
-        this.V = V;
-        this.adj = new Deque[V];
-        for (int i = 0; i < V; i++)
-            adj[i] = new LinkedList<>();
-    }
-
-    public void addEdge(int v, int w) {
-        adj[v].add(w);
-        adj[w].add(v);
-        E++;
-    }
-
-    // 그 노드로의 모든 이동을 제한한다.
-    public void deleteNode(int v) {
-        for (Deque<Integer> adjList : adj) {
-            adjList.remove(v);
-        }
-        adj[v] = new LinkedList<>();
-    }
-
-    public int getV() {
-        return V;
-    }
-
-    public Deque<Integer> getAdj(int v) {
-        return adj[v];
+        sz[vi]--;
     }
 
     @Override
     public Object clone() {
-        Graph clone = new Graph(V);
-        clone.E = E;
-        clone.adj = new Deque[V];
-        for (int i = 0; i < V; i++) {
-            clone.adj[i] = new LinkedList<>();
-            for (int c : adj[i])
-                clone.adj[i].add(c);
-        }
+        UnionFind clone = new UnionFind(N);
+
+        System.arraycopy(id, 0, clone.id, 0, id.length);
+        System.arraycopy(sz, 0, clone.sz, 0, sz.length);
+
         return clone;
     }
 }
