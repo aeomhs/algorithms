@@ -49,51 +49,104 @@ public class MuziLiveShow {
         result = test.solution(food_times, k);
         System.out.println(expected + " ? " + result);
         assert expected == result;
+
+        food_times = new int[] {
+                1, 1, 1, 1
+        };
+        k = 4;
+        expected = -1;
+        result = test.solution(food_times, k);
+        System.out.println(expected + " ? " + result);
+        assert expected == result;
+
+        food_times = new int[] {
+                1, 1, 1, 1
+        };
+        k = 3;
+        expected = 4;
+        result = test.solution(food_times, k);
+        System.out.println(expected + " ? " + result);
+        assert expected == result;
+
+        food_times = new int[] {
+                1, 1, 1, 2
+        };
+        k = 4;
+        expected = 4;
+        result = test.solution(food_times, k);
+        System.out.println(expected + " ? " + result);
+        assert expected == result;
+
+        food_times = new int[] {
+                5, 1, 1, 2
+        };
+        k = 7;
+        expected = 1;
+        result = test.solution(food_times, k);
+        System.out.println(expected + " ? " + result);
+        assert expected == result;
     }
 
     public int solution(int[] food_times, long k) {
-        PriorityQueue<FoodItem> foods = new PriorityQueue<>();
+        int N = food_times.length;
+        FoodItem[] foods = new FoodItem[N];
 
-        for (int i = 0; i < food_times.length; i++) {
-            foods.offer(new FoodItem(i+1, food_times[i]));
+        for (int i = 0; i < N; i++) {
+            foods[i] = new FoodItem(i+1, food_times[i]);
         }
 
-        while (!foods.isEmpty()) {
-            int cycle = foods.size();
-            FoodItem min = foods.poll();
+        Arrays.sort(foods);
 
-            if (k > cycle * min.foods) {
-                foods.removeIf(foodItem -> foodItem.eat(min.foods));
-                k -= cycle * min.foods;
+        long cycle = 0;
+        for (int i = 0; i < N; i++) {
+            long T = N - i;
+            long min = foods[i].foods;
+            if (k >= T * (min-cycle)) {
+                for (; i+1 < N && foods[i].foods == foods[i+1].foods; i++);
+                k -= T * (min-cycle);
+                cycle = min;
             }
             else {
-                foods.offer(min);
+                FoodItem[] rest = new FoodItem[(int) T];
+                System.arraycopy(foods, i, rest, 0, (int) T);
+                Arrays.sort(rest, Comparator.comparingInt(o1->o1.id));
+
+                return rest[(int) (k%T)].id;
+            }
+        }
+        return -1;
+    }
+
+    public int solution2(int[] food_times, long k) {
+        PriorityQueue<FoodItem> foods = new PriorityQueue<>(food_times.length);
+        ArrayList<FoodItem> foodIds = new ArrayList<>(food_times.length);
+
+        for (int i = 0; i < food_times.length; i++) {
+            FoodItem foodItem = new FoodItem(i+1, food_times[i]);
+            foods.add(foodItem);
+            foodIds.add(foodItem);
+        }
+
+        int T = foods.size();// 1 바퀴 도는데 필요한 시간
+
+        while (T > 0) {
+            FoodItem food = foods.poll();
+            int min = food.foods;
+            if (k >= (long)T * (long)min) {
+                foodIds.removeIf(foodItem -> foodItem.eat(min));
+                k -= ((long)T * (long)min);
+
+                T = foods.size();
+            } else {
                 break;
             }
         }
 
-        if (foods.size() == 1) {
-            if (foods.peek().foods <= k)
-                return -1;
-            else
-                return foods.peek().id;
-        }
+        if (foodIds.size() == 0)
+            return -1;
 
-//        while (k > foods.size()) {
-//            foods.removeIf(foodItem -> foodItem.eat(1));
-//            k -= foods.size();
-//        }
+        return foodIds.get((int) (k % foodIds.size())).id;
 
-        int cycle = (int) (k / foods.size()); // k == 10, size == 4, [4, 4, 4, 4] -> 2 cycle
-        foods.removeIf(foodItem -> foodItem.eat(cycle));
-        k -= cycle * foods.size();    // k == 2
-
-        List<FoodItem> foodItemList = new ArrayList<>(foods);
-        foodItemList.sort(Comparator.comparingInt((FoodItem food) -> food.id));
-
-        System.out.println(foods);
-        System.out.println(foodItemList);
-        return foodItemList.get((int) (k%foods.size())).id;
     }
 
     static class FoodItem implements Comparable<FoodItem> {
