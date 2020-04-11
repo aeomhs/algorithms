@@ -50,10 +50,20 @@ public class RegexLibrary {
      * 255.255.255.255
      */
     public static boolean isIPv4Address(String input) {
-        String regex = "^([0-2]?[0-9]{1,2}).([0-2]?[0-9]{1,2}).([0-2]?[0-9]{1,2}).([0-2]?[0-9]{1,2})$";
+        String regex = "^([0-9]{1,3})\\.([0-9]{1,3})\\.([0-9]{1,3})\\.([0-9]{1,3})$";
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(input);
-        return matcher.matches();
+
+        if (!matcher.find())
+            return false;
+
+        for (int i = 1; i < 5; i++) {
+            int addr = Integer.parseInt(matcher.group(i));
+            if (addr < 0 || addr > 255)
+                return false;
+        }
+
+        return true;
     }
 }
 
@@ -98,6 +108,7 @@ class RegexLibraryTest {
         Assertions.assertTrue(RegexLibrary.isIPv4Address("255.255.255.255"));
         Assertions.assertTrue(RegexLibrary.isIPv4Address("0.255.255.255"));
         Assertions.assertTrue(RegexLibrary.isIPv4Address("127.0.0.0"));
+        Assertions.assertTrue(RegexLibrary.isIPv4Address("127.0.0.1"));
         Assertions.assertTrue(RegexLibrary.isIPv4Address("0.0.0.0"));
         Assertions.assertTrue(RegexLibrary.isIPv4Address("0.0.0.1"));
 
