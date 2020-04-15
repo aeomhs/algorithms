@@ -1,7 +1,5 @@
 package com.aeomhs.codekata.programmers;
 
-import java.util.PriorityQueue;
-
 public class FIFOScheduling {
 
     public static void main(String[] args) {
@@ -12,67 +10,51 @@ public class FIFOScheduling {
     }
 
     public int solution(int n, int[] cores) {
-        PriorityQueue<Core> pq = new PriorityQueue<>();
+        final int len = cores.length;
+        if (n < len)
+            return len % n + 1;
+        else if (n == len)
+            return len;
 
-        // All Cores working
-        for (int i = 0; i < cores.length; i++) {
-            pq.add(new Core(i+1, cores[i]));
-            if (n == 1) {
-                return i+1;
+        int minWorkTime = cores[0];
+        int maxWorkTime = cores[0];
+
+        for (int i = 1; i < len; i++) {
+            minWorkTime = Math.min(minWorkTime, cores[i]);
+            maxWorkTime = Math.max(maxWorkTime, cores[i]);
+        }
+
+        int maxTime = (maxWorkTime * n) / len - maxWorkTime;
+        int minTime = (minWorkTime * n) / len - minWorkTime;
+
+        while (minTime <= maxTime) {
+            // midTime 동안 수행할 수 있는 작업량
+            int midTime = (maxTime + minTime) / 2;
+
+            int worked = len;
+            int count = 0;
+            for (int workTime : cores) {
+                worked += midTime / workTime;
+                if (midTime % workTime == 0) {
+                    count++;
+                }
             }
-            n--;
-        }
 
-        while (!pq.isEmpty()) {
-            Core idle = pq.poll();
-            System.out.println(idle);
-
-            if (n > 1) {
-                idle.time += idle.jobTime;
-                pq.add(idle);
-                n--;
+            if (n > worked) {
+                minTime = midTime + 1;
+            } else if (n <= worked - count) {
+                maxTime = midTime - 1;
+            } else {
+                int k = 0;
+                for (int i = 0; i < len; i++) {
+                    if (midTime % cores[i] == 0)
+                        k++;
+                    if (n - (worked - count) == k)
+                        return i+1;
+                }
             }
-            else if (n == 1) {
-                return idle.id;
-            }
         }
 
-        return -1;
-    }
-
-    static class Core implements Comparable<Core> {
-        int id;
-
-        int jobTime;
-
-        int time;
-
-        Core (int id, int jobTime) {
-            this.id = id;
-            this.jobTime = jobTime;
-            this.time = jobTime;
-        }
-
-        @Override
-        public int compareTo(Core o) {
-            if (this.time < o.time)
-                return -1;
-            if (this.time > o.time)
-                return 1;
-            if (this.id < o.id)
-                return -1;
-            if (this.id > o.id)
-                return 1;
-            return 0;
-        }
-
-        @Override
-        public String toString() {
-            return "Core{" +
-                    "id=" + id +
-                    ", jobTime=" + jobTime +
-                    ", time=" + time +
-                    '}';
-        }
+        return 0;
     }
 }
