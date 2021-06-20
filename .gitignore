@@ -1,9 +1,9 @@
-/SendBox.iml
+*.iml
 /.idea/
 /out/
-/src/com/aeomhs/codetest/programmers/
-/src/com/aeomhs/io/
-/src/com/aeomhs/sendbox/
-/src/com/aeomhs/codekata/linetest/
-/src/com/aeomhs/codekata/naver/
-/src/com/aeomhs/codekata/programmerstest/
+/src/main/java/com/aeomhs/codetest/programmers/
+/src/main/java/com/aeomhs/io/
+/src/main/java/com/aeomhs/sendbox/
+/src/main/java/com/aeomhs/codekata/linetest/
+/src/main/java/com/aeomhs/codekata/naver/
+/src/main/java/com/aeomhs/codekata/programmerstest/
